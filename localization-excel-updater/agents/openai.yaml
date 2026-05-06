@@ -1,0 +1,4 @@
+interface:
+  display_name: "Localization Excel Updater"
+  short_description: "Add rows, create workbooks, or sync Feishu/local Excel"
+  default_prompt: "Handle Rokid localization workbook workflows in four modes: add new localized rows with unique keys and sync them to Feishu, create a brand-new local and Feishu workbook pair, bulk-download Feishu spreadsheets for app or glasses, or pull Feishu spreadsheets back to local excel_files after reset and then push Git."

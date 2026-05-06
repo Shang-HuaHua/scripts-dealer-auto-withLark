@@ -1,0 +1,9 @@
+{
+  "app_id": "cli_a9482e36f4b89cd6",
+  "app_secret": "0ucQqnEa3iLmCrn252izfbDj0vawT7vc",
+  "notification_webhook": "https://open.feishu.cn/open-apis/bot/v2/hook/12b9256e-cc70-4b27-ac7e-1f9f259882b7",
+  "folders": {
+    "app": "Ngq7f20daljaqydb43ccr4Pjnvm",
+    "glasses": "Fp6MfNpWzl1INxdu6r0c8G3FnmL"
+  }
+}
