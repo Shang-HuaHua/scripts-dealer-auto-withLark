@@ -557,6 +557,7 @@ Rules:
 8. Create a commit with either the user-provided message or a concise default message.
 9. Push the target repository to its configured remote.
 10. Report the local repo path, pushed branch, and remote URL.
+11. After every successful skill-repo push, provide a short `本次提交描述（中文版）` section that summarizes the actual update points in natural Chinese.
 
 Use:
 
@@ -573,6 +574,7 @@ Rules:
 - Publish mode updates the skill files inside a Git repo; it does not modify Feishu workbooks.
 - Publish mode should preserve the target repo's `.git` directory and remote settings.
 - If `git push` fails, report that the repo content and local commit were updated but remote push did not succeed.
+- When replying after a successful skill-repo update, do not show only the commit hash. Always include a Chinese explanation of what changed in this submission, based on the real update points.
 
 ## Key Rules
 

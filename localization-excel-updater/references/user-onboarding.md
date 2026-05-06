@@ -219,6 +219,7 @@ This will:
 3. Stage the changed files
 4. Commit the repo update
 5. Push it to the configured remote
+6. Reply with a `本次提交描述（中文版）` summary of the update points
 
 ## What The User Should Expect
 
@@ -228,6 +229,7 @@ Explain this clearly:
 - The skill can also edit an existing row in place while keeping the same `key`.
 - If the user types visible escape sequences like `\n`, the skill should keep them as literal text in the workbook instead of converting them into actual line breaks.
 - The skill can also publish its own latest files into a provided Git repository for backup or sharing.
+- After a successful skill-repo push, it should explain the current submission in Chinese based on the real update points, not just show a commit id.
 - It runs `reset.command` before any local append or local overwrite workflow.
 - In `add_rows`, it syncs the same rows into the matching Feishu spreadsheet before running `run.command`.
 - In bulk pull mode, it uses Feishu spreadsheets to overwrite local `excel_files/*.xlsx`.
