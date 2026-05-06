@@ -1,6 +1,6 @@
 ---
 name: localization-excel-updater
-description: Update Rokid localization workbooks in four modes: add new rows, edit existing rows by key or text, bulk-download Feishu spreadsheets, or pull Feishu spreadsheets back to local excel_files before pushing Git.
+description: Update Rokid localization workbooks, manage Feishu workbook sync, and publish the skill itself to a target Git repository.
 ---
 
 # Localization Excel Updater
@@ -13,7 +13,7 @@ If the user asks how to install, share, or first-use this skill, read [user-onbo
 
 ## Supported Modes
 
-This skill now supports five operation modes.
+This skill now supports six operation modes.
 
 1. Add rows:
    - generate new keys
@@ -49,6 +49,11 @@ This skill now supports five operation modes.
    - write the standard header row to both
    - run `run.command`
    - push Git
+6. Publish the skill repo:
+   - export the current `localization-excel-updater` skill folder
+   - optionally include the Chinese update-and-usage document
+   - copy the latest skill content into a provided local Git repository
+   - commit and push the repository
 
 ## Operation Detection
 
@@ -59,6 +64,7 @@ Resolve the user request into one of these intents:
 - If the user asks to download Feishu cloud workbooks locally, use `download_feishu`.
 - If the user asks to pull Feishu cloud workbooks back to local and upload Git, use `pull_feishu_to_git`.
 - If the user asks to add a brand-new workbook or table on both local and Feishu, use `create_workbook`.
+- If the user asks to update, export, or publish this skill itself into a provided Git repository, use `publish_skill_repo`.
 
 Examples:
 
@@ -69,6 +75,8 @@ Examples:
 - `把飞书眼镜端覆盖到本地并上传 git` -> `pull_feishu_to_git`
 - `从飞书回拉 app端 notification 和 settings，再推 git` -> `pull_feishu_to_git`
 - `眼镜端新增一个 Widgets 表格` -> `create_workbook`
+- `把这个 skill 更新到我给的 Git 仓库` -> `publish_skill_repo`
+- `把 localization-excel-updater 导出并推到提供的 GitHub 仓库` -> `publish_skill_repo`
 
 ## Required Input By Mode
 
@@ -133,6 +141,18 @@ Collect or infer:
 
 This mode creates one brand-new workbook at a time.
 Do not guess a file name if the user did not provide one.
+
+### publish_skill_repo
+
+Collect or infer:
+
+- Local target repository path
+- Optional remote URL if the local repo is not prepared yet
+- Whether to include the Chinese update-and-usage document
+- Optional commit message
+
+Prefer a prepared local repo path when available.
+If the user gives only a remote URL, create or reuse a local export repo first, then bind that remote.
 
 ## Preferred Input Formats
 
@@ -270,6 +290,26 @@ Prefer these forms:
 文件：Widgets
 ```
 
+### publish_skill_repo
+
+Prefer these forms:
+
+```text
+把这个 skill 更新到我给的 Git 仓库
+本地仓库：/path/to/repo
+```
+
+```text
+把 Localization Excel Updater 导出并推到这个仓库：
+git@github.com:xxx/yyy.git
+```
+
+```text
+发布 skill
+本地仓库：/path/to/repo
+提交说明：update skill workflow
+```
+
 ## Parsing Rules
 
 - Accept side aliases only as `app端` and `眼镜端` when replying to the user.
@@ -287,6 +327,7 @@ Prefer these forms:
 - For `create_workbook`, require exactly one side and one new workbook name.
 - For `create_workbook`, stop if the workbook already exists locally or in Feishu instead of silently reusing it.
 - For `edit_rows`, keep the original `key` unchanged unless the user explicitly asks to rename the key. Renaming keys is out of scope for this skill.
+- For `publish_skill_repo`, treat the current skill directory as the source of truth and do not edit files directly inside the target repo copy before syncing.
 
 ## Guided Selection
 
@@ -504,6 +545,35 @@ Rules:
 - Create mode is a hard stop if the workbook already exists locally or in Feishu.
 - Create mode does not send the row-level webhook.
 
+## Workflow: publish_skill_repo
+
+1. Resolve the source skill directory as the current installed `localization-excel-updater` folder.
+2. Resolve the target local Git repository path.
+3. If the user provided only a remote URL, prepare a local export repository first and bind the remote.
+4. Copy the full skill folder into the target repo with [publish_skill_repo.py](./scripts/publish_skill_repo.py).
+5. Include the Chinese update-and-usage document when the repository is intended for sharing or backup.
+6. Run `git status` and verify the exported files are present.
+7. Stage the updated files.
+8. Create a commit with either the user-provided message or a concise default message.
+9. Push the target repository to its configured remote.
+10. Report the local repo path, pushed branch, and remote URL.
+
+Use:
+
+```bash
+python3 /Users/rokid/.codex/skills/localization-excel-updater/scripts/publish_skill_repo.py \
+  --skill-dir /Users/rokid/.codex/skills/localization-excel-updater \
+  --repo-dir /path/to/local/repo \
+  --target-folder localization-excel-updater \
+  --doc /path/to/更新说明与用法（中文）.md
+```
+
+Rules:
+
+- Publish mode updates the skill files inside a Git repo; it does not modify Feishu workbooks.
+- Publish mode should preserve the target repo's `.git` directory and remote settings.
+- If `git push` fails, report that the repo content and local commit were updated but remote push did not succeed.
+
 ## Key Rules
 
 - Keep keys lowercase snake_case.
@@ -634,6 +704,7 @@ This is mandatory for all Git-push workflows.
 - `sync_feishu_sheet_rows.py` supports environment overrides for app credentials and folder tokens.
 - `send_feishu_update_webhook.py` supports `FEISHU_NOTIFICATION_WEBHOOK` as an override.
 - `send_feishu_update_webhook.py` can also derive the current commit URL from `--git-workspace` and derive the Feishu document URL from `--side` plus `--file`.
+- `publish_skill_repo.py` copies the installed skill directory into a prepared Git repo without touching the repo's `.git` metadata.
 - `manage_feishu_workbooks.py` supports `--dry-run` for both `download` and `pull`.
 - `manage_feishu_workbooks.py` also supports `create` and `--dry-run` for create planning.
 - `build_gitlab_commit_link.py` converts the current repo's `origin` remote plus `HEAD` commit into clickable GitLab URLs.
@@ -663,3 +734,5 @@ This is mandatory for all Git-push workflows.
 - `从飞书回拉 全部，覆盖本地并上传 git`
 - `眼镜端新增一个 Widgets 表格`
 - `创建表格\n端：app端\n文件：sdk_new`
+- `把这个 skill 更新到我给的 Git 仓库`
+- `把 Localization Excel Updater 导出并推到这个 GitHub 仓库`

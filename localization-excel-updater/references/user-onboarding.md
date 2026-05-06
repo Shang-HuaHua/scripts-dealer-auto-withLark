@@ -24,6 +24,7 @@ Required files:
 - `scripts/manage_feishu_workbooks.py`
 - `scripts/list_workbooks.py`
 - `scripts/send_feishu_update_webhook.py`
+- `scripts/publish_skill_repo.py`
 - `feishu_sync_config.json`
 - `references/workspace-layout.md`
 - `references/feishu-sync.md`
@@ -38,6 +39,7 @@ When sharing the skill with another user, recommend one of these methods:
 1. Send the whole `localization-excel-updater` folder.
 2. Put the folder in a Git repo and ask them to copy it into `~/.codex/skills/`.
 3. Zip the folder, then ask them to unzip it into `~/.codex/skills/`.
+4. Put the folder in a dedicated Git repo and keep future skill updates synced there.
 
 ## First-Use Checklist
 
@@ -194,6 +196,30 @@ This will:
 5. Run `run.command`
 6. Commit and push
 
+### Publish The Skill Repo
+
+Recommend:
+
+```text
+把这个 skill 更新到我给的 Git 仓库
+本地仓库：/path/to/repo
+```
+
+Or:
+
+```text
+把 Localization Excel Updater 导出并推到这个仓库：
+git@github.com:xxx/yyy.git
+```
+
+This will:
+
+1. Copy the latest installed skill folder into the target repo
+2. Optionally include the Chinese update-and-usage document
+3. Stage the changed files
+4. Commit the repo update
+5. Push it to the configured remote
+
 ## What The User Should Expect
 
 Explain this clearly:
@@ -201,6 +227,7 @@ Explain this clearly:
 - The skill edits the source `.xlsx` file directly in `add_rows` mode.
 - The skill can also edit an existing row in place while keeping the same `key`.
 - If the user types visible escape sequences like `\n`, the skill should keep them as literal text in the workbook instead of converting them into actual line breaks.
+- The skill can also publish its own latest files into a provided Git repository for backup or sharing.
 - It runs `reset.command` before any local append or local overwrite workflow.
 - In `add_rows`, it syncs the same rows into the matching Feishu spreadsheet before running `run.command`.
 - In bulk pull mode, it uses Feishu spreadsheets to overwrite local `excel_files/*.xlsx`.
