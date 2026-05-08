@@ -230,6 +230,8 @@ Explain this clearly:
 - If the user types visible escape sequences like `\n`, the skill should keep them as literal text in the workbook instead of converting them into actual line breaks.
 - The skill can also publish its own latest files into a provided Git repository for backup or sharing.
 - After a successful skill-repo push, it should explain the current submission in Chinese based on the real update points, not just show a commit id.
+- In `en`, it should default to sentence case and keep only the first letter of the full string capitalized unless a brand name or explicit user request requires more capitalization.
+- In `zh-rHK`, it must use Hong Kong Traditional Chinese style; in `zh-rTW`, it must use Taiwan Traditional Chinese style; neither may contain Simplified Chinese output.
 - It runs `reset.command` before any local append or local overwrite workflow.
 - In `add_rows`, it syncs the same rows into the matching Feishu spreadsheet before running `run.command`.
 - In bulk pull mode, it uses Feishu spreadsheets to overwrite local `excel_files/*.xlsx`.

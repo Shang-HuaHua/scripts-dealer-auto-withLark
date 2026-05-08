@@ -602,10 +602,15 @@ Rules:
 - For titles, buttons, switches, and enum values, prefer short UI-style wording.
 - For description fields, allow a complete sentence, but keep it concise and consistent with the paired title field.
 - For enum-like values such as `常开`, `关闭`, and `智能`, choose the natural system-setting wording in each language.
-- Use Traditional Chinese naturally for `zh-rHK` and `zh-rTW`; do not do a mechanical simplified-to-traditional character swap if a more natural UI phrase is available.
+- `zh-rHK` must use Hong Kong Traditional Chinese wording and display style. Prefer Hong Kong UI vocabulary and phrasing, and do not fall back to Simplified Chinese.
+- `zh-rTW` must use Taiwan Traditional Chinese wording and display style. Prefer Taiwan UI vocabulary and phrasing, and do not fall back to Simplified Chinese.
+- For both `zh-rHK` and `zh-rTW`, do not output Simplified Chinese characters. If a generated phrase contains any Simplified Chinese wording or Mainland-specific phrasing, rewrite it before writing the workbook.
+- Do not do a mechanical simplified-to-traditional character swap if a more natural locale-specific phrase is available.
 - Do not leave an existing language column blank unless the user explicitly asks for that or the source text is genuinely not translatable without clarification.
 - If a translation is uncertain, choose the safest natural UI wording instead of leaving the cell blank.
-- **Capitalization for Latin-script languages** (en, de, es, fr, nl, pl, it, pt, id, vi): Use sentence case — only the first letter of the entire string is capitalized, all other letters are lowercase. Examples: `Data Sync` → `Data sync`, `Glasses Wi-Fi Cannot Be Turned Off` → `Glasses Wi-Fi cannot be turned off`. Exception: If the user explicitly requests Title Case or if a specific product/brand name requires capitalization, preserve that capitalization.
+- **Capitalization for Latin-script languages** (en, de, es, fr, nl, pl, it, pt, id, vi): Use sentence case — only the first letter of the entire string is capitalized, all other letters are lowercase. Examples: `Data Sync` → `Data sync`, `Glasses Wi-Fi Cannot Be Turned Off` → `Glasses Wi-Fi cannot be turned off`.
+- For `en`, treat this as a hard rule by default: only the first letter of the full string may be capitalized, and all other non-brand words must stay lowercase unless the user explicitly requests otherwise.
+- Preserve required capitalization only for product names, brand names, abbreviations, and user-requested casing overrides.
 
 ## Excel Write Rules
 
