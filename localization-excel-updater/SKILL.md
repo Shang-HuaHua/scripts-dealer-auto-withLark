@@ -13,7 +13,7 @@ If the user asks how to install, share, or first-use this skill, read [user-onbo
 
 ## Supported Modes
 
-This skill now supports six operation modes.
+This skill now supports seven operation modes.
 
 1. Add rows:
    - generate new keys
@@ -54,6 +54,12 @@ This skill now supports six operation modes.
    - optionally include the Chinese update-and-usage document
    - copy the latest skill content into a provided local Git repository
    - commit and push the repository
+7. Find existing text:
+   - search existing workbooks for a provided Chinese text
+   - return the matched side, workbook, local workbook link, `key`, and row number
+   - do not modify any workbook
+   - do not run `run.command`
+   - do not run Git
 
 ## Operation Detection
 
@@ -65,6 +71,7 @@ Resolve the user request into one of these intents:
 - If the user asks to pull Feishu cloud workbooks back to local and upload Git, use `pull_feishu_to_git`.
 - If the user asks to add a brand-new workbook or table on both local and Feishu, use `create_workbook`.
 - If the user asks to update, export, or publish this skill itself into a provided Git repository, use `publish_skill_repo`.
+- If the user asks where a Chinese text already exists, use `find_text`.
 
 Examples:
 
@@ -77,6 +84,7 @@ Examples:
 - `眼镜端新增一个 Widgets 表格` -> `create_workbook`
 - `把这个 skill 更新到我给的 Git 仓库` -> `publish_skill_repo`
 - `把 localization-excel-updater 导出并推到提供的 GitHub 仓库` -> `publish_skill_repo`
+- `帮我找一下“已复制到剪切板”在哪个表格` -> `find_text`
 
 ## Required Input By Mode
 
@@ -153,6 +161,19 @@ Collect or infer:
 
 Prefer a prepared local repo path when available.
 If the user gives only a remote URL, create or reuse a local export repo first, then bind that remote.
+
+### find_text
+
+Collect or infer:
+
+- Search text from the workbook `zh` column
+- Optional side:
+  - `app端`
+  - `眼镜端`
+  - omitted means search both sides
+
+If the side is omitted, search both sides before replying.
+Prefer exact `zh` matches first. If there is no exact match, report that and optionally include unique substring matches when they are helpful.
 
 ## Preferred Input Formats
 
@@ -310,6 +331,27 @@ git@github.com:xxx/yyy.git
 提交说明：update skill workflow
 ```
 
+### find_text
+
+Prefer these forms:
+
+```text
+用 Localization Excel Updater
+帮我找一下这个文案 “已复制到剪切板” 在哪个表格
+```
+
+```text
+用 Localization Excel Updater
+查找文案
+内容：已复制到剪切板
+```
+
+```text
+用 Localization Excel Updater
+端：app端
+查找文案：已复制到剪切板
+```
+
 ## Parsing Rules
 
 - Accept side aliases only as `app端` and `眼镜端` when replying to the user.
@@ -328,6 +370,9 @@ git@github.com:xxx/yyy.git
 - For `create_workbook`, stop if the workbook already exists locally or in Feishu instead of silently reusing it.
 - For `edit_rows`, keep the original `key` unchanged unless the user explicitly asks to rename the key. Renaming keys is out of scope for this skill.
 - For `publish_skill_repo`, treat the current skill directory as the source of truth and do not edit files directly inside the target repo copy before syncing.
+- For `find_text`, search the `zh` column only unless the user explicitly asks for another language column.
+- For `find_text`, ignore temporary Excel files such as `.~launcher.xlsx` and `~$foo.xlsx`.
+- For `find_text`, if there are multiple matches, list every match instead of guessing which one the user wants.
 
 ## Guided Selection
 
@@ -402,6 +447,28 @@ When the user does not provide a `key`:
 3. If there is exactly one exact match, use that row's `key`.
 4. If there is no exact match, try a unique substring match in `zh`.
 5. If there are multiple matches, stop and ask the user for the exact `key`.
+
+### Text Matching For find_text
+
+1. Read the selected side's local workbooks under `excel_files/*.xlsx`.
+2. Ignore temporary files such as `.~*.xlsx` and `~$*.xlsx`.
+3. Search exact matches in the `zh` column first.
+4. If there are no exact matches, optionally collect substring matches that contain the query text.
+5. Return every exact match. Only mention substring matches when exact matches are missing.
+
+## Workflow: find_text
+
+1. Resolve the target side. If omitted, search both `app端` and `眼镜端`.
+2. Read each selected workbook locally. Do not run `reset.command`.
+3. Search the `zh` column for the requested text, preferring exact matches.
+4. Return each match with:
+   - side
+   - workbook file name
+   - local workbook file link
+   - `key`
+   - row number
+5. If no exact match is found, clearly say so and optionally include any useful substring matches.
+6. Do not write any workbook, sync Feishu, run `run.command`, or run Git.
 
 ## Workflow: add_rows
 

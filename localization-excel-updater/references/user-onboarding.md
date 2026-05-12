@@ -221,12 +221,46 @@ This will:
 5. Push it to the configured remote
 6. Reply with a `本次提交描述（中文版）` summary of the update points
 
+### Find Existing Text
+
+Recommend:
+
+```text
+用 Localization Excel Updater
+帮我找一下这个文案 “已复制到剪切板” 在哪个表格
+```
+
+Or:
+
+```text
+用 Localization Excel Updater
+查找文案
+内容：已复制到剪切板
+```
+
+Or:
+
+```text
+用 Localization Excel Updater
+端：app端
+查找文案：已复制到剪切板
+```
+
+This will:
+
+1. Search the selected side, or both sides if omitted
+2. Check the `zh` column in local `excel_files/*.xlsx`
+3. Prefer exact matches over substring matches
+4. Return the workbook file link, `key`, and row number
+5. Not modify any workbook and not run Git
+
 ## What The User Should Expect
 
 Explain this clearly:
 
 - The skill edits the source `.xlsx` file directly in `add_rows` mode.
 - The skill can also edit an existing row in place while keeping the same `key`.
+- The skill can also search for an existing Chinese text and report the workbook link, `key`, and row number.
 - If the user types visible escape sequences like `\n`, the skill should keep them as literal text in the workbook instead of converting them into actual line breaks.
 - The skill can also publish its own latest files into a provided Git repository for backup or sharing.
 - After a successful skill-repo push, it should explain the current submission in Chinese based on the real update points, not just show a commit id.
