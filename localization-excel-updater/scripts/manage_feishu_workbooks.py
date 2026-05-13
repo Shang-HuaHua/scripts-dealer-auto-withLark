@@ -85,11 +85,6 @@ def parse_args():
         help="New workbook module name with or without .xlsx",
     )
     create_parser.add_argument(
-        "--folder",
-        required=True,
-        help="Target folder inside the selected side repository where the new .xlsx file should be created.",
-    )
-    create_parser.add_argument(
         "--config",
         help="Optional path to feishu sync config JSON. Defaults to feishu_sync_config.json beside the skill.",
     )
@@ -172,7 +167,7 @@ def normalize_module_name(file_name: str) -> str:
     return file_name[:-5] if file_name.endswith(".xlsx") else file_name
 
 
-MODULE_NAME_PATTERN = re.compile(r"^[A-Za-z]+$")
+MODULE_NAME_PATTERN = re.compile(r"^[A-Za-z]+(?:_[A-Za-z]+)*$")
 
 
 def normalize_modules(files: Optional[Iterable[str]]) -> List[str]:
@@ -257,32 +252,14 @@ def resolve_spreadsheet(files, module_name: str):
     return None
 
 
-def side_repo_root(workspace_root: Path, side: str) -> Path:
-    return workspace_root / SIDE_DIRS[side]
-
-
-def ensure_inside(parent: Path, child: Path):
-    parent_resolved = parent.resolve()
-    child_resolved = child.resolve()
-    try:
-        child_resolved.relative_to(parent_resolved)
-    except ValueError as exc:
-        raise ValueError(f"Target path must stay inside {parent_resolved}: {child_resolved}") from exc
-    return child_resolved
-
-
-def resolve_create_target_folder(workspace_root: Path, side: str, folder_arg: str) -> Path:
-    repo_root = side_repo_root(workspace_root, side)
-    folder_path = Path(folder_arg).expanduser()
-    target = folder_path if folder_path.is_absolute() else repo_root / folder_path
-    return ensure_inside(repo_root, target)
-
-
 def validate_module_name(module_name: str):
     if not module_name:
         raise ValueError("Workbook name cannot be empty.")
     if not MODULE_NAME_PATTERN.fullmatch(module_name):
-        raise ValueError("Workbook name must contain only letters A-Z or a-z, with no spaces or other characters.")
+        raise ValueError(
+            "Workbook name must use English letters only, with underscores allowed only between words. "
+            "Spaces, Chinese characters, digits, and other symbols are not allowed."
+        )
 
 
 def ensure_module_name_not_used(workspace_root: Path, side: str, module_name: str):
@@ -292,13 +269,6 @@ def ensure_module_name_not_used(workspace_root: Path, side: str, module_name: st
         raise FileExistsError(
             f"Workbook name '{module_name}' conflicts with an existing {SIDE_LABELS[side]} Excel file: {existing_path}"
         )
-
-
-def ensure_target_filename_available(target_folder: Path, module_name: str):
-    if target_folder.exists():
-        for path in target_folder.glob("*.xlsx"):
-            if path.stem.lower() == module_name.lower():
-                raise FileExistsError(f"Target workbook already exists in folder: {path}")
 
 
 def get_spreadsheet_metainfo(token: str, spreadsheet_token: str):
@@ -685,16 +655,12 @@ def run_create(args):
     validate_module_name(module_name)
     ensure_module_name_not_used(workspace_root, side, module_name)
 
-    target_folder = resolve_create_target_folder(workspace_root, side, args.folder)
-    ensure_target_filename_available(target_folder, module_name)
-
     config = load_config(args.config)
     token = get_tenant_access_token(config)
 
     headers = read_local_headers_template(workspace_root, side)
+    target_folder = local_excel_dir(workspace_root, side).resolve()
     local_path = target_folder / f"{module_name}.xlsx"
-    standard_excel_dir = local_excel_dir(workspace_root, side).resolve()
-    standard_path_mode = local_path.parent.resolve() == standard_excel_dir
 
     spreadsheets = list_spreadsheets_for_side(token, config["folders"][side])
     existing_cloud = resolve_spreadsheet(spreadsheets, module_name)
@@ -706,17 +672,16 @@ def run_create(args):
     cloud_result = None
     if not args.dry_run:
         write_new_workbook(local_path, "Sheet1", [headers])
-        if standard_path_mode:
-            created = create_feishu_spreadsheet(token, config["folders"][side], module_name)
-            header_write = write_feishu_headers(token, created["spreadsheet_token"], headers)
-            cloud_result = {
-                "module": module_name,
-                "spreadsheet_token": created["spreadsheet_token"],
-                "spreadsheet_url": created["url"],
-                "sheet_id": header_write["sheet_id"],
-                "sheet_title": header_write["sheet_title"],
-                "updated_range": header_write["updated_range"],
-            }
+        created = create_feishu_spreadsheet(token, config["folders"][side], module_name)
+        header_write = write_feishu_headers(token, created["spreadsheet_token"], headers)
+        cloud_result = {
+            "module": module_name,
+            "spreadsheet_token": created["spreadsheet_token"],
+            "spreadsheet_url": created["url"],
+            "sheet_id": header_write["sheet_id"],
+            "sheet_title": header_write["sheet_title"],
+            "updated_range": header_write["updated_range"],
+        }
 
     print(
         json.dumps(
@@ -727,11 +692,8 @@ def run_create(args):
                 "module": module_name,
                 "local_path": str(local_path),
                 "target_folder": str(target_folder),
-                "repo_root": str(side_repo_root(workspace_root, side).resolve()),
                 "headers": headers,
                 "folder_token": config["folders"][side],
-                "standard_excel_dir": str(standard_excel_dir),
-                "standard_path_mode": standard_path_mode,
                 "dry_run": args.dry_run,
                 "cloud": cloud_result,
             },
