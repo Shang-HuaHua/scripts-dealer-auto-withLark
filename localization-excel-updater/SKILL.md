@@ -43,12 +43,13 @@ This skill now supports seven operation modes.
    - run `run.command`
    - push Git
 5. Create workbook:
-   - reset the selected side first
-   - create a new local workbook under `excel_files/`
-   - create the matching Feishu spreadsheet in the configured folder
-   - write the standard header row to both
-   - run `run.command`
-   - push Git
+   - ask for the selected fixed side, workbook name, and target folder
+   - validate that the workbook name contains only letters and no spaces
+   - validate that the workbook name does not conflict with any existing Excel name on the selected fixed side
+   - derive the standard header row from the selected fixed side
+   - create a new local workbook in the requested folder
+   - if the requested folder is the standard `excel_files/` directory for that side, also create the matching Feishu spreadsheet, run `run.command`, and push Git
+   - if the requested folder is a custom folder inside that side's repository, create only the local template workbook and skip Feishu, `run.command`, and Git
 6. Publish the skill repo:
    - export the current `localization-excel-updater` skill folder
    - optionally include the Chinese update-and-usage document
@@ -146,9 +147,13 @@ Collect or infer:
 
 - Side: `app端` or `眼镜端`
 - File: new workbook name such as `Widgets`
+- Target folder inside the selected side repository, such as `excel_files` or `exports/templates`
 
 This mode creates one brand-new workbook at a time.
 Do not guess a file name if the user did not provide one.
+Do not guess the target folder if the user did not provide one.
+Workbook names must contain letters only and must not contain spaces.
+Workbook names must not duplicate any existing Excel module name on the selected side.
 
 ### publish_skill_repo
 
@@ -309,6 +314,14 @@ Prefer these forms:
 创建表格
 端：眼镜端
 文件：Widgets
+目标文件夹：excel_files
+```
+
+```text
+创建表格
+端：app端
+文件：TemplateOnly
+目标文件夹：exports/templates
 ```
 
 ### publish_skill_repo
@@ -367,7 +380,11 @@ Prefer these forms:
 - For `download_feishu` and `pull_feishu_to_git`, do not ask the user to repeat the whole request if only the scope is missing.
 - If the user requests bulk work for `全部` and also gives a file list, ask them to split it into one side at a time instead of guessing across both sides.
 - For `create_workbook`, require exactly one side and one new workbook name.
+- For `create_workbook`, require exactly one side, one new workbook name, and one target folder.
 - For `create_workbook`, stop if the workbook already exists locally or in Feishu instead of silently reusing it.
+- For `create_workbook`, validate the workbook name with `^[A-Za-z]+$`. Reject spaces, digits, underscores, hyphens, and Chinese characters.
+- For `create_workbook`, compare workbook names case-insensitively against the selected side's existing Excel names and reject duplicates.
+- For `create_workbook`, require the target folder to stay inside the selected side repository.
 - For `edit_rows`, keep the original `key` unchanged unless the user explicitly asks to rename the key. Renaming keys is out of scope for this skill.
 - For `publish_skill_repo`, treat the current skill directory as the source of truth and do not edit files directly inside the target repo copy before syncing.
 - For `find_text`, search the `zh` column only unless the user explicitly asks for another language column.
@@ -584,16 +601,23 @@ Rules:
 
 ## Workflow: create_workbook
 
-1. Resolve the target side and new workbook name.
+1. Resolve the selected fixed side, new workbook name, and target folder.
 2. Run the matching `reset.command` and wait for it to finish successfully.
-3. Confirm the workbook does not already exist locally under `excel_files/`.
-4. Confirm the matching Feishu spreadsheet does not already exist in that side's configured folder.
-5. Create the new local workbook with the side's standard header row.
-6. Create the matching Feishu spreadsheet and write the same header row to row 1.
-7. Run the matching `run.command`.
-8. Confirm commit and push success.
-9. Run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) and display the GitLab links to the user.
-10. Report the new local path, Feishu spreadsheet URL, and push result.
+3. Validate that the workbook name contains letters only and no spaces.
+4. Confirm the workbook name does not duplicate any existing Excel name on the selected side.
+5. Confirm the target folder stays inside the selected side repository.
+6. Derive the header row from the selected side's existing Excel files.
+7. Create the new local workbook with that standard header row in the requested folder.
+8. If the target folder is exactly that side's standard `excel_files/` directory:
+   - create the matching Feishu spreadsheet and write the same header row to row 1
+   - run the matching `run.command`
+   - confirm commit and push success
+   - run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) and display the GitLab links to the user
+9. If the target folder is a custom folder:
+   - skip Feishu creation
+   - skip `run.command`
+   - skip Git
+10. Report the new local path, the selected header side, whether the target folder was standard or custom, and any Feishu or Git result that actually happened.
 
 Use:
 
@@ -602,14 +626,20 @@ python3 /Users/rokid/.codex/skills/localization-excel-updater/scripts/manage_fei
   create \
   --workspace "$PWD" \
   --side 眼镜端 \
-  --file Widgets
+  --file Widgets \
+  --folder excel_files
 ```
 
 Rules:
 
 - Create mode supports only one side and one workbook at a time.
-- Create mode derives the standard header row from existing workbooks on that side instead of hardcoding it in the skill.
+- Create mode derives the standard header row from existing workbooks on the selected side instead of hardcoding it in the skill.
+- Create mode requires the user to provide the target folder explicitly.
+- Create mode validates workbook names with letters only and no spaces.
+- Create mode rejects names that conflict, case-insensitively, with any existing Excel file on the selected side.
+- Create mode allows only folders inside the selected side repository.
 - Create mode is a hard stop if the workbook already exists locally or in Feishu.
+- Create mode creates the matching Feishu spreadsheet only when the target folder is the standard `excel_files/` directory for that side.
 - Create mode does not send the row-level webhook.
 
 ## Workflow: publish_skill_repo

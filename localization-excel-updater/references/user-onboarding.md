@@ -185,16 +185,17 @@ Or:
 创建表格
 端：app端
 文件：sdk_new
+目标文件夹：excel_files
 ```
 
 This will:
 
 1. Run `reset.command`
-2. Create the new local workbook under `excel_files/`
-3. Create the matching Feishu spreadsheet
-4. Write the standard header row to both
-5. Run `run.command`
-6. Commit and push
+2. Validate that the workbook name uses letters only and has no spaces
+3. Reject the name if it conflicts with any existing Excel name on that side
+4. Create the new local workbook in the requested folder using that side's standard header row
+5. If the target folder is `excel_files`, also create the matching Feishu spreadsheet
+6. If the target folder is `excel_files`, continue with `run.command`, commit, and push
 
 ### Publish The Skill Repo
 
@@ -271,6 +272,8 @@ Explain this clearly:
 - In bulk pull mode, it uses Feishu spreadsheets to overwrite local `excel_files/*.xlsx`.
 - File selection is dynamic: the picker reads the current local `excel_files/*.xlsx` directory instead of using a hardcoded workbook list.
 - In create-workbook mode, it creates both the local workbook and the matching Feishu spreadsheet before pushing Git.
+- In create-workbook mode, the user must provide the workbook name and target folder; names must use letters only, must not contain spaces, and must not duplicate an existing Excel name on the selected side.
+- In create-workbook mode, if the target folder is not the standard `excel_files` directory, it creates only the local template workbook and skips Feishu plus Git.
 - It runs `run.command` after a successful local update workflow.
 - It tries to commit and push automatically in Git workflows.
 - After a successful Git push, it should show a clickable line in the reply such as `本次提交: https://...`.
