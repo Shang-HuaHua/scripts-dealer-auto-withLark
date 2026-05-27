@@ -77,7 +77,7 @@ Use this when Feishu is the temporary source of truth and the user wants to writ
 - Run the selected side's `reset.command` first.
 - Pull one side or both sides.
 - Optional explicit module list is supported only for a single side.
-- Overwrite local workbooks directly under `excel_files/*.xlsx`.
+- Rebuild the full workbook from Feishu and directly replace the local workbook file under `excel_files/*.xlsx`.
 - Overwrite only workbooks that exist both locally and in Feishu.
 - When a module is explicitly requested and is missing locally or in Feishu, stop and report the mismatch.
 - After overwrite succeeds, run that side's `run.command`.
@@ -192,7 +192,7 @@ Bulk download and bulk pull do not send the row-level webhook.
 ### pull_feishu_to_git
 
 1. Run `reset.command`
-2. Pull Feishu spreadsheets and overwrite local `excel_files/*.xlsx`
+2. Pull Feishu spreadsheets and directly replace local `excel_files/*.xlsx` files with the full cloud workbooks
 3. Run `run.command`
 4. Show `本次提交: https://...`
 5. Report which workbooks were overwritten and whether push succeeded

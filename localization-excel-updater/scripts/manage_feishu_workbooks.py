@@ -394,25 +394,13 @@ def read_local_headers_template(workspace_root: Path, side: str):
     raise ValueError(f"Could not infer workbook headers for side {side} from {excel_dir}")
 
 
-def overwrite_local_workbook(local_path: Path, values):
-    workbook = load_workbook(local_path)
-    worksheet = workbook[workbook.sheetnames[0]]
-
-    current_max_row = max(worksheet.max_row, len(values))
-    current_max_col = max(
-        worksheet.max_column,
-        max((len(row) for row in values), default=1),
-    )
-
-    for row_index in range(1, current_max_row + 1):
-        for column_index in range(1, current_max_col + 1):
-            worksheet.cell(row=row_index, column=column_index, value=None)
-
-    for row_index, row in enumerate(values, start=1):
-        for column_index, value in enumerate(row, start=1):
-            worksheet.cell(row=row_index, column=column_index, value=value)
-
-    workbook.save(local_path)
+def replace_local_workbook(local_path: Path, sheet_title: str, values):
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = local_path.with_name(f".{local_path.stem}.feishu_pull_tmp.xlsx")
+    if temp_path.exists():
+        temp_path.unlink()
+    write_new_workbook(temp_path, sheet_title, values)
+    temp_path.replace(local_path)
 
 
 def default_download_output_dir(workspace_root: Path) -> Path:
@@ -594,7 +582,7 @@ def run_pull(args):
 
             sheet_data = fetch_spreadsheet_values(token, spreadsheet)
             if not args.dry_run:
-                overwrite_local_workbook(local_path, sheet_data["values"])
+                replace_local_workbook(local_path, sheet_data["sheet_title"], sheet_data["values"])
             synced.append(
                 {
                     "module": module,

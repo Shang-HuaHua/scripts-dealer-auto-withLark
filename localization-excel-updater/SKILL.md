@@ -39,7 +39,8 @@ This skill now supports seven operation modes.
 4. Pull from Feishu and push Git:
    - reset the selected side first
    - pull Feishu spreadsheets
-   - overwrite matching local `excel_files/*.xlsx`
+   - download the full workbook content for each selected Excel file
+   - directly replace the matching local `excel_files/*.xlsx` file with the freshly pulled workbook
    - run `run.command`
    - push Git
 5. Create workbook:
@@ -551,7 +552,7 @@ Rules:
 2. If the user gave explicit file names, keep the scope to a single side.
 3. For each selected side, run that side's `reset.command` before any overwrite.
 4. Pull the requested Feishu spreadsheets with [manage_feishu_workbooks.py](./scripts/manage_feishu_workbooks.py) in `pull` mode.
-5. Overwrite the matching local `excel_files/*.xlsx` files.
+5. For each selected workbook, rebuild the full cloud workbook and directly replace the matching local `excel_files/*.xlsx` file.
 6. Run that side's `run.command`.
 7. Confirm commit and push success for that side.
 8. Run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) for that side and display the GitLab links to the user.
@@ -581,7 +582,8 @@ python3 /Users/rokid/.codex/skills/localization-excel-updater/scripts/manage_fei
 Rules:
 
 - Always run `reset.command` before calling the pull mode for that side.
-- Pull mode overwrites matching local workbooks directly under `excel_files/`.
+- Pull mode replaces matching local workbooks directly under `excel_files/` with the full workbook pulled from Feishu.
+- Pull mode must not do an in-place row or cell patch on the existing local Excel file. This avoids leaving behind stale rows that were already deleted in Feishu.
 - Pull mode updates only workbooks that exist locally and in Feishu.
 - If the user explicitly names a workbook and it is missing locally or in Feishu, stop and report the mismatch.
 - For `全部`, run the two sides sequentially, not in parallel.
@@ -657,6 +659,8 @@ Rules:
 - Keep keys lowercase snake_case.
 - Use only ASCII letters, digits, and underscores.
 - Make the key short, readable, and semantically tied to the Chinese UI text and file context.
+- Do not mechanically prefix keys with the workbook name or side name. The downstream codebase already composes table context with the key, so default to the shortest clear key that fits the row meaning.
+- Add a workbook-specific prefix only when it is truly needed to avoid a collision inside the same workbook or when the user explicitly requests that naming style.
 - Never reuse a key already present in the workbook.
 - When a candidate key collides, keep the base meaning and add a short suffix instead of changing the meaning.
 - Treat uniqueness as workbook-scoped.
@@ -672,6 +676,7 @@ Rules:
 - Keep UI copy natural and ready for direct use in the interface, not as explanatory prose.
 - Preserve placeholders, punctuation, line breaks, brand names, product names, and formatting markers.
 - If the user types visible escape sequences such as `\n`, `\t`, `\"`, or `\\` in the source text, keep those characters literally in the workbook cells. Do not decode them into actual newlines, tabs, or other escaped characters unless the user explicitly asks for that conversion.
+- Treat this as a one-layer literal write rule. Example: if the user inputs `第一行\n第二行`, the final cell value must contain exactly `\n` between the two phrases. Do not turn it into a real line break, and do not over-escape it into `\\n`.
 - Between Chinese characters and Latin letters/numbers, insert a half-width space for readability. Apply this to all language columns. Examples: `登录API接口` → `登录 API 接口`, `蓝牙BLE` → `蓝牙 BLE`, `WiFi6` → `WiFi 6`, `iPhone16` → `iPhone 16`. Brand names composed entirely of Latin letters (e.g. `Rokid`, `WiFi`) do not need internal spacing; only add spaces at the boundary between CJK and Latin characters.
 - Keep `zh` aligned with the user-provided Chinese text unless the text clearly contains an obvious typo or formatting issue. The spacing rule above also applies when writing back the `zh` column: auto-insert half-width spaces between Chinese and Latin/number boundaries even if the user's original input did not include them.
 - Keep repeated concepts translated consistently within the current batch, within the current workbook, and with any existing workbook terminology.
