@@ -61,6 +61,7 @@ def load_rows(input_path: Path):
     for index, row in enumerate(rows, start=1):
         if not isinstance(row, dict):
             raise ValueError(f"Row {index} must be an object")
+        row = resolve_external_value_refs(row, input_path.parent)
         key = row.get("key")
         if not isinstance(key, str) or not key.strip():
             raise ValueError(f"Row {index} is missing a non-empty key")
@@ -71,6 +72,21 @@ def load_rows(input_path: Path):
         row["key"] = key
         normalized_rows.append(row)
     return normalized_rows
+
+
+def resolve_external_value_refs(row, base_dir: Path):
+    resolved = {}
+    for key, value in row.items():
+        if isinstance(value, str) and value.startswith("@file:"):
+            file_path = Path(value[len("@file:"):]).expanduser()
+            if not file_path.is_absolute():
+                file_path = (base_dir / file_path).resolve()
+            if not file_path.exists():
+                raise FileNotFoundError(f"Referenced text file not found for header '{key}': {file_path}")
+            resolved[key] = file_path.read_text(encoding="utf-8")
+        else:
+            resolved[key] = value
+    return resolved
 
 
 def read_headers(worksheet):

@@ -34,8 +34,8 @@ This skill now supports seven operation modes.
    - regenerate translations for the workbook's existing language columns
    - update the local workbook and matching Feishu spreadsheet in place
    - run `run.command`
-   - push Git
-   - send the success webhook
+   - push Git unless the user explicitly says not to submit
+   - do not send the success webhook
 4. Pull from Feishu and push Git:
    - reset the selected side first
    - pull Feishu spreadsheets
@@ -502,10 +502,10 @@ When the user does not provide a `key`:
 6. Regenerate translations for every existing language column in that workbook row.
 7. Update the local workbook in place with [update_excel_rows.py](./scripts/update_excel_rows.py).
 8. Sync the same updated rows into the matching Feishu spreadsheet with [sync_feishu_sheet_rows.py](./scripts/sync_feishu_sheet_rows.py).
-9. Only if the Feishu sync succeeds, run the matching `run.command` and wait for the push to complete.
-10. Only if the push succeeds, send the success webhook with [send_feishu_update_webhook.py](./scripts/send_feishu_update_webhook.py).
-11. Run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) and display the GitLab links to the user.
-12. Report the updated keys, target workbook, Feishu sync result, webhook result, and whether the push succeeded.
+9. Only if the Feishu sync succeeds, run the matching `run.command` and wait for the push to complete, unless the user explicitly said not to submit.
+10. Do not send the success webhook for edit-only changes.
+11. Run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) and display the GitLab links to the user when a push occurred.
+12. Report the updated keys, target workbook, Feishu sync result, whether the push succeeded, and that the Feishu group notification was intentionally skipped.
 
 ## Workflow: download_feishu
 
@@ -600,8 +600,9 @@ Rules:
 7. Create the matching Feishu spreadsheet and write the same header row to row 1.
 8. Run the matching `run.command`.
 9. Confirm commit and push success.
-10. Run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) and display the GitLab links to the user.
-11. Report the new local path, the selected header side, the Feishu spreadsheet URL, and push result.
+10. Send the success webhook with [send_feishu_update_webhook.py](./scripts/send_feishu_update_webhook.py) after the push succeeds, because a new workbook was created.
+11. Run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) and display the GitLab links to the user.
+12. Report the new local path, the selected header side, the Feishu spreadsheet URL, webhook result when applicable, and push result.
 
 Use:
 
@@ -621,7 +622,7 @@ Rules:
 - Create mode validates workbook names with English letters and optional underscores only.
 - Create mode rejects names that conflict, case-insensitively, with any existing Excel file on the selected side.
 - Create mode is a hard stop if the workbook already exists locally or in Feishu.
-- Create mode does not send the row-level webhook.
+- Create mode sends a webhook whenever a new workbook is created and pushed. If rows were added to the new workbook before upload, include those row details; if the workbook only has headers, notify that the new workbook was created.
 
 ## Workflow: publish_skill_repo
 
@@ -677,9 +678,11 @@ Rules:
 - Preserve placeholders, punctuation, line breaks, brand names, product names, and formatting markers.
 - If the user types visible escape sequences such as `\n`, `\t`, `\"`, or `\\` in the source text, keep those characters literally in the workbook cells. Do not decode them into actual newlines, tabs, or other escaped characters unless the user explicitly asks for that conversion.
 - Treat this as a one-layer literal write rule. Example: if the user inputs `第一行\n第二行`, the final cell value must contain exactly `\n` between the two phrases. Do not turn it into a real line break, and do not over-escape it into `\\n`.
+- Execution safeguard: when building temporary row JSON for any text that may contain visible escape sequences, do not embed the user text directly inside Python string literals or shell JSON snippets. Instead, write the exact source text to a UTF-8 temp file first and reference it from the row JSON with `@file:/absolute/path.txt`. The Excel update and Feishu sync scripts now resolve `@file:` values by reading the file content verbatim.
 - Between Chinese characters and Latin letters/numbers, insert a half-width space for readability. Apply this to all language columns. Examples: `登录API接口` → `登录 API 接口`, `蓝牙BLE` → `蓝牙 BLE`, `WiFi6` → `WiFi 6`, `iPhone16` → `iPhone 16`. Brand names composed entirely of Latin letters (e.g. `Rokid`, `WiFi`) do not need internal spacing; only add spaces at the boundary between CJK and Latin characters.
 - Keep `zh` aligned with the user-provided Chinese text unless the text clearly contains an obvious typo or formatting issue. The spacing rule above also applies when writing back the `zh` column: auto-insert half-width spaces between Chinese and Latin/number boundaries even if the user's original input did not include them.
 - Keep repeated concepts translated consistently within the current batch, within the current workbook, and with any existing workbook terminology.
+- Product-name override: when the product term `看一下支付` appears, keep `zh`, `zh-rHK`, and `zh-rTW` translated in their Chinese locales (`看一下支付` / `看一下支付` / `看一下支付` inside the surrounding sentence). For all non-Chinese language columns, use the brand text `Alipay look` inside the surrounding sentence.
 - For titles, buttons, switches, and enum values, prefer short UI-style wording.
 - For description fields, allow a complete sentence, but keep it concise and consistent with the paired title field.
 - For enum-like values such as `常开`, `关闭`, and `智能`, choose the natural system-setting wording in each language.
@@ -742,7 +745,7 @@ python3 /Users/rokid/.codex/skills/localization-excel-updater/scripts/sync_feish
 
 ## Webhook Rules
 
-- After a successful `add_rows` or `edit_rows` workflow, send a Feishu bot webhook notification with [send_feishu_update_webhook.py](./scripts/send_feishu_update_webhook.py):
+- After a successful `add_rows` workflow that creates new keys, send a Feishu bot webhook notification with [send_feishu_update_webhook.py](./scripts/send_feishu_update_webhook.py). Also send it after a successful `create_workbook` push when a new workbook was created, with or without rows added in the same workflow:
 
 ```bash
 python3 /Users/rokid/.codex/skills/localization-excel-updater/scripts/send_feishu_update_webhook.py \
@@ -752,11 +755,11 @@ python3 /Users/rokid/.codex/skills/localization-excel-updater/scripts/send_feish
   --git-workspace <workspace_path>
 ```
 
-- Send the webhook only after local Excel update, Feishu row sync, and Git push all succeed.
-- The webhook message must include the selected side, file, each newly added row's `key` plus Chinese `zh` text, the latest Git commit URL, and the updated Feishu document URL.
+- Send the webhook only after local Excel update, Feishu row sync when applicable, and Git push all succeed.
+- The webhook message must include the selected side, file, each newly added row's `key` plus Chinese `zh` text when rows were added, the latest Git commit URL, and the updated Feishu document URL.
 - Do not send the webhook if Feishu sync failed or if `run.command` push failed.
-- Do not send the row-level webhook for `download_feishu` or `pull_feishu_to_git`.
-- If the user asks to fix keys or translations right after an `add_rows` or `edit_rows` push, send a follow-up webhook message for the corrected rows after the next successful push.
+- Do not send the row-level webhook for `edit_rows`, `download_feishu`, or `pull_feishu_to_git`.
+- If the user asks to fix keys or translations right after an `add_rows` push, process it as `edit_rows`: sync Feishu, run `run.command`, push Git unless explicitly told not to submit, and skip the Feishu group webhook.
 
 ## GitLab Link Display
 
@@ -802,7 +805,7 @@ This is mandatory for all Git-push workflows.
 - If Feishu row sync fails in `add_rows` or `edit_rows`, report that the local Excel update succeeded but the cloud spreadsheet sync did not, and stop before `run.command`.
 - If bulk pull succeeds locally but `run.command` fails for a selected side, report that side separately and stop before starting the next side.
 - If `run.command` fails because there are no changes to commit or because push fails, explain the failure clearly and stop.
-- If webhook sending fails after a successful `add_rows` push, report the webhook failure separately. Do not claim the notification was sent.
+- If webhook sending fails after a successful `add_rows` or `create_workbook` push, report the webhook failure separately. Do not claim the notification was sent.
 - Do not claim success until the required push step finishes successfully.
 
 ## Example Requests

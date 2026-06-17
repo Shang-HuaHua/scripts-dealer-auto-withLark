@@ -141,7 +141,11 @@ The scripts support environment overrides:
 
 ## Success Notification
 
-After the local Excel update, Feishu row sync, and `run.command` push all succeed in `add_rows` mode or `edit_rows` mode, send a Feishu bot webhook message containing:
+After the local Excel update, Feishu row sync when applicable, and `run.command` push all succeed in `add_rows` mode, send a Feishu bot webhook message for the newly created keys.
+
+Also send a webhook after `create_workbook` mode when the workflow creates a new workbook and pushes Git successfully. If rows were added to the new workbook in the same workflow, include those row details; if it only creates an empty workbook with headers, still notify that the new workbook was created.
+
+The message must contain:
 
 - side
 - file
@@ -160,7 +164,7 @@ python3 /Users/rokid/.codex/skills/localization-excel-updater/scripts/send_feish
   --git-workspace "$PWD"
 ```
 
-Bulk download and bulk pull do not send the row-level webhook.
+Edit-only changes, bulk download, and bulk pull do not send the row-level webhook.
 
 ## Recommended Workflows
 
@@ -181,7 +185,7 @@ Bulk download and bulk pull do not send the row-level webhook.
 4. Sync the same updated row to Feishu
 5. Only if Feishu sync succeeds, run `run.command`
 6. Only if `run.command` push succeeds, show `本次提交: https://...`
-7. Only if `run.command` push succeeds, send the Feishu bot webhook notification
+7. Do not send the Feishu bot webhook notification for edit-only changes
 
 ### download_feishu
 
@@ -205,7 +209,8 @@ Bulk download and bulk pull do not send the row-level webhook.
 4. Write the standard header row to both
 5. Run `run.command`
 6. Show `本次提交: https://...`
-7. Report the local path, Feishu URL, and push result
+7. Send the Feishu bot webhook notification for the newly created workbook
+8. Report the local path, Feishu URL, webhook result when applicable, and push result
 
 If Feishu row sync fails, stop before `run.command`.
 If bulk pull overwrite fails, stop before `run.command`.

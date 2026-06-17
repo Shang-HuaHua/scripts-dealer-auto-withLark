@@ -89,7 +89,7 @@ Then the skill should guide them through:
    - from the current local workbook list under `excel_files/*.xlsx`
    - by number, or
    - by file name
-3. Wait for reset, local Excel update, Feishu row sync, resource generation, commit, push, and success webhook
+3. Wait for reset, local Excel update, Feishu row sync, resource generation, commit, push, and success webhook for newly created keys
 
 ### Edit Existing Rows
 
@@ -276,7 +276,8 @@ Explain this clearly:
 - It runs `run.command` after a successful local update workflow.
 - It tries to commit and push automatically in Git workflows.
 - After a successful Git push, it should show a clickable line in the reply such as `本次提交: https://...`.
-- After a successful `add_rows` or `edit_rows` push, it sends a Feishu webhook notification containing the updated `key`, Chinese text, latest Git commit URL, and the matching Feishu document URL.
+- After a successful `add_rows` push, it sends a Feishu webhook notification containing the newly created `key`, Chinese text, latest Git commit URL, and the matching Feishu document URL.
+- After a successful `edit_rows` push, it does not send a Feishu webhook notification, because no new key or workbook was created.
 - Download mode only exports spreadsheets locally and does not touch Git.
 - If Feishu sync fails, the skill should stop before `run.command` and report the cloud-sync failure.
 - If Git push fails because of SSH or network issues, the skill should report that the local commit succeeded but remote push did not.
