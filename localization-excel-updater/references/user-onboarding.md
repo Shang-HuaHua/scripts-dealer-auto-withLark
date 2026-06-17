@@ -262,6 +262,7 @@ Explain this clearly:
 - The skill can also edit an existing row in place while keeping the same `key`.
 - The skill can also search for an existing Chinese text and report the workbook link, `key`, and row number.
 - If the user types visible escape sequences like `\n`, the skill should keep them as literal text in the workbook instead of converting them into actual line breaks.
+- In `add_rows`, before translation and key generation, it checks whether the user-provided fields contain duplicate Chinese UI strings. It reports any duplicates, keeps the first occurrence, removes the repeated copies, and continues without asking for confirmation.
 - The skill can also publish its own latest files into a provided Git repository for backup or sharing.
 - After a successful skill-repo push, it should explain the current submission in Chinese based on the real update points, not just show a commit id.
 - In `en`, it should default to sentence case and keep only the first letter of the full string capitalized unless a brand name or explicit user request requires more capitalization.

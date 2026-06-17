@@ -365,6 +365,7 @@ Prefer these forms:
 - In inline text, split multiple UI fields on `、`, `，`, `；`, `;`, or line breaks.
 - Ignore surrounding quotes such as `“登录成功”`.
 - Remove empty entries after splitting.
+- Before translation or key generation in `add_rows`, check the parsed field list for duplicate Chinese UI strings after trimming whitespace and surrounding quotes. If duplicates exist, tell the user which strings were repeated, keep only the first occurrence of each duplicated string, and continue autonomously with the deduplicated list. Do not stop to ask for confirmation.
 - When the request already contains exactly one mode, one side or scope, and the needed file data for that mode, proceed without asking.
 - For `edit_rows`, prefer matching by explicit `key` when the user gives one.
 - For `edit_rows`, if the user gives only current Chinese text, look for an exact `zh` match first. Only fall back to a unique substring match if the exact match is missing.
@@ -481,16 +482,17 @@ When the user does not provide a `key`:
 1. Resolve the target side and workbook path from the current workspace.
 2. Run the matching `reset.command` and wait for it to finish successfully before reading the workbook.
 3. Inspect the workbook header row and existing keys.
-4. For each Chinese UI string, generate:
+4. Before translating, deduplicate the user-provided Chinese UI strings. If duplicate strings were removed, mention the removed duplicates in the progress or final response and proceed with the first occurrence only.
+5. For each remaining Chinese UI string, generate:
    - one new `key`
    - translations for every non-empty language column in the workbook
    - values for non-language columns only when the workbook already uses them and the correct value is clear; otherwise leave them empty
-5. Append the new rows with [append_excel_rows.py](./scripts/append_excel_rows.py).
-6. Sync the same rows into the matching Feishu spreadsheet with [sync_feishu_sheet_rows.py](./scripts/sync_feishu_sheet_rows.py).
-7. Only if the Feishu sync succeeds, run the matching `run.command` and wait for the push to complete.
-8. Only if the push succeeds, send the success webhook with [send_feishu_update_webhook.py](./scripts/send_feishu_update_webhook.py).
-9. Run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) and display the GitLab links to the user.
-10. Report the added keys, target workbook, Feishu sync result, webhook result, and whether the push succeeded.
+6. Append the new rows with [append_excel_rows.py](./scripts/append_excel_rows.py).
+7. Sync the same rows into the matching Feishu spreadsheet with [sync_feishu_sheet_rows.py](./scripts/sync_feishu_sheet_rows.py).
+8. Only if the Feishu sync succeeds, run the matching `run.command` and wait for the push to complete.
+9. Only if the push succeeds, send the success webhook with [send_feishu_update_webhook.py](./scripts/send_feishu_update_webhook.py).
+10. Run [build_gitlab_commit_link.py](./scripts/build_gitlab_commit_link.py) and display the GitLab links to the user.
+11. Report the added keys, any duplicate strings that were removed, target workbook, Feishu sync result, webhook result, and whether the push succeeded.
 
 ## Workflow: edit_rows
 
