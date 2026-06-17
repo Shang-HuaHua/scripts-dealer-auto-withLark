@@ -740,6 +740,7 @@ python3 /Users/rokid/.codex/skills/localization-excel-updater/scripts/sync_feish
 - Match the Feishu spreadsheet by file name inside the configured side folder.
 - Match Feishu rows by `key`, not by row number.
 - If the `key` exists in Feishu, update that row in place.
+- When updating an existing Feishu row, unspecified columns must keep their current Feishu values. Partial update JSON must not blank out language columns that were not included in the input.
 - If the `key` does not exist, append it after the last non-empty Feishu `key` row.
 - Treat Feishu row-sync failure as a hard stop for `add_rows` and `edit_rows`. Do not continue to `run.command` if the cloud sync failed.
 

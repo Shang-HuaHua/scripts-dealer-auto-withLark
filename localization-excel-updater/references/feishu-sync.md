@@ -30,6 +30,7 @@ Use this after local `add_rows` writes or local `edit_rows` writes:
 - Read the header row from Feishu and use those headers as the authoritative cloud column order.
 - Match rows by `key`.
 - If the `key` already exists in Feishu, update that row in place.
+- For existing rows, preserve current Feishu cell values for any columns that are not present in the input JSON. Partial row updates must not clear unspecified language columns.
 - If the `key` does not exist, append it after the last non-empty `key` row in Feishu.
 
 Use:

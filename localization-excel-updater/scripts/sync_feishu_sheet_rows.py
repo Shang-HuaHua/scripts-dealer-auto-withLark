@@ -229,8 +229,17 @@ def read_headers_and_key_rows(token: str, spreadsheet_token: str, sheet_id: str,
     return headers, key_to_row, last_nonempty_key_row
 
 
-def build_row_values(headers, row):
-    return [row.get(header, "") for header in headers]
+def build_row_values(headers, row, existing_values=None):
+    values = []
+    existing_values = existing_values or []
+    for index, header in enumerate(headers):
+        if header in row:
+            values.append(row.get(header, ""))
+        elif index < len(existing_values):
+            values.append(existing_values[index])
+        else:
+            values.append("")
+    return values
 
 
 def sync_rows(token: str, spreadsheet_token: str, sheet_id: str, headers, key_to_row, last_nonempty_key_row, rows, dry_run: bool):
@@ -248,8 +257,12 @@ def sync_rows(token: str, spreadsheet_token: str, sheet_id: str, headers, key_to
             next_row += 1
             operation = "append"
 
-        values = [build_row_values(headers, row)]
         range_expr = f"{sheet_id}!A{target_row}:{last_col}{target_row}"
+        existing_values = None
+        if operation == "update":
+            current_values = read_sheet_range(token, spreadsheet_token, range_expr)
+            existing_values = current_values[0] if current_values else []
+        values = [build_row_values(headers, row, existing_values)]
         if not dry_run:
             update_sheet_range(token, spreadsheet_token, range_expr, values)
 
